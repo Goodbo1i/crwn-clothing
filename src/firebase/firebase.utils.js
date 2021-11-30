@@ -1,9 +1,8 @@
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import firebase from "firebase/app";
+import "firebase/firestore";
+import "firebase/auth";
 
-const firebaseConfig = {
+const config = {
   apiKey: "AIzaSyBFOZjnLWsY2aZsDFw62bOlbktS0V98A-w",
   authDomain: "crwn-db-82413.firebaseapp.com",
   projectId: "crwn-db-82413",
@@ -13,35 +12,38 @@ const firebaseConfig = {
   measurementId: "G-XH2C4XS3DP",
 };
 
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+firebase.initializeApp(config);
 
-export const auth = getAuth();
-export const firestore = getFirestore();
+export const createUserProfileDocument = async (userAuth, additionalData) => {
+  if (!userAuth) return;
 
-const provider = new GoogleAuthProvider();
+  const userRef = firestore.doc(`users/${userAuth.uid}`);
 
+  const snapShot = await userRef.get();
+
+  if (!snapShot.exists) {
+    const { displayName, email } = userAuth;
+    const createdAt = new Date();
+    try {
+      await userRef.set({
+        displayName,
+        email,
+        createdAt,
+        ...additionalData,
+      });
+    } catch (error) {
+      console.log("error creating user", error.message);
+    }
+  }
+
+  return userRef;
+};
+
+export const auth = firebase.auth();
+export const firestore = firebase.firestore();
+
+const provider = new firebase.auth.GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
+export const signInWithGoogle = () => auth.signInWithPopup(provider);
 
-export const signInWithGoogle = () =>
-  signInWithPopup(auth, provider)
-    .then((result) => {
-      // This gives you a Google Access Token. You can use it to access the Google API.
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential.accessToken;
-      // The signed-in user info.
-      const user = result.user;
-      // ...
-    })
-    .catch((error) => {
-      // Handle Errors here.
-      const errorCode = error.code;
-      const errorMessage = error.message;
-      // The email of the user's account used.
-      const email = error.email;
-      // The AuthCredential type that was used.
-      const credential = GoogleAuthProvider.credentialFromError(error);
-      // ...
-    });
-
-export default initializeApp;
+export default firebase;
